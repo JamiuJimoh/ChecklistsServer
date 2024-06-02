@@ -124,7 +124,7 @@ func DeleteChecklist(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// delete on db
-	err = delete(id)
+	err = deleteChecklist(id)
 	if err != nil {
 		http.Error(w, "error occured while deleting checklist", http.StatusInternalServerError)
 		return

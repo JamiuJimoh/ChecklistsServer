@@ -1,6 +1,7 @@
 package item
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,9 +17,17 @@ type ChecklistItem struct {
 	ExpireAt    time.Time `json:"expire_at"`
 }
 
+var ctx = context.Background()
+
 // create
-func createChecklistItem(w http.ResponseWriter, r *http.Request) {
-	r.Header.Set("Accept", "application/json")
+func CreateChecklistItem(w http.ResponseWriter, r *http.Request) {
+	strChID := r.PathValue("checklistID")
+	checklistID, err := strconv.Atoi(strChID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("invalid path value: %v", r.URL.Path), http.StatusNotFound)
+		return
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	var ci ChecklistItem
 	for {
@@ -33,32 +42,36 @@ func createChecklistItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// save to db
-	// ci = add()
+	err = AddChecklistItem(checklistID, &ci)
+	if err != nil {
+		http.Error(w, "error occured while saving checklistItem", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(&ci)
 }
 
 // get item by id
-func getChecklistItem(w http.ResponseWriter, r *http.Request) {
-	strChID := r.PathValue("checklistID")
+func GetChecklistItem(w http.ResponseWriter, r *http.Request) {
 	itemID := r.PathValue("id")
-	checklistID, err := strconv.Atoi(strChID)
-	checklistItemID, err := strconv.Atoi(itemID)
+	id, err := strconv.Atoi(itemID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("invalid path value: %v", r.URL.Path), http.StatusNotFound)
 		return
 	}
 
-	fmt.Fprintf(w, "%d %d", checklistID, checklistItemID)
-
 	// retrieve from db
-	// ci := retrieve(checklistID, checklistItemID)
-	// w.Header().Set("Content-Type", "application/json")
-	// json.NewEncoder(w).Encode(&ci)
+	ci, err := retrieveById(id)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("could not find item with id: %v", id), http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(&ci)
 }
 
 // get all items by checklist id
-func getChecklistItems(w http.ResponseWriter, r *http.Request) {
+func GetChecklistItems(w http.ResponseWriter, r *http.Request) {
 	strChID := r.PathValue("checklistID")
 	checklistID, err := strconv.Atoi(strChID)
 	if err != nil {
@@ -66,19 +79,21 @@ func getChecklistItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "%d", checklistID)
 	// retrieve from db
-	// items := retrieve(id)
-	// w.Header().Set("Content-Type", "application/json")
-	// json.NewEncoder(w).Encode(&items)
+	items, err := RetrieveByChecklistID(checklistID)
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("could not find items belonging to checklist with id: %v", checklistID), http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(&items)
 }
 
 // update
-func updateChecklistItem(w http.ResponseWriter, r *http.Request) {
-	strChID := r.PathValue("checklistID")
+func UpdateChecklistItem(w http.ResponseWriter, r *http.Request) {
 	itemID := r.PathValue("id")
-	checklistItemID, err := strconv.Atoi(itemID)
-	checklistID, err := strconv.Atoi(strChID)
+	id, err := strconv.Atoi(itemID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("invalid path value: %v", r.URL.Path), http.StatusNotFound)
 		return
@@ -99,25 +114,32 @@ func updateChecklistItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// update on db
-	// items := ci.update(checklistID, checklistItemID)
+	ci.Id = id
+	err = update(&ci)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, "%d %d\n", checklistID, checklistItemID)
 	json.NewEncoder(w).Encode(&ci)
 }
 
 // delete
-func deleteChecklistItem(w http.ResponseWriter, r *http.Request) {
-	strChID := r.PathValue("checklistID")
+func DeleteChecklistItem(w http.ResponseWriter, r *http.Request) {
 	itemID := r.PathValue("id")
-	checklistItemID, err := strconv.Atoi(itemID)
-	checklistID, err := strconv.Atoi(strChID)
+	id, err := strconv.Atoi(itemID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("invalid path value: %v", r.URL.Path), http.StatusNotFound)
 		return
 	}
 
 	// delete on db
-	// err := delete(checklistID, checklistItemID)
+	err = deleteItem(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, "%d %d\n", checklistID, checklistItemID)
+	message, _ := json.Marshal(`{"deleted": true}`)
+	fmt.Fprintln(w, string(message))
 }
