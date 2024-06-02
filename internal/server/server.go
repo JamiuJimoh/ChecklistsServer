@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/JamiuJimoh/checklist/internal/checklist"
+	"github.com/JamiuJimoh/checklist/internal/item"
 )
 
 func NewServer() (server *http.Server) {
@@ -17,11 +18,11 @@ func NewServer() (server *http.Server) {
 	http.HandleFunc("PATCH /checklists/{id}", checklist.UpdateChecklist)
 	http.HandleFunc("DELETE /checklists/{id}", checklist.DeleteChecklist)
 
-	// http.HandleFunc("GET /checklists/{checklistID}/items", getChecklistItems)
-	// http.HandleFunc("GET /checklists/{checklistID}/items/{id}", getChecklistItem)
-	// http.HandleFunc("POST /checklists/{checklistID}/items", createChecklistItem)
-	// http.HandleFunc("PUT /checklists/{checklistID}/items/{id}", updateChecklistItem)
-	// http.HandleFunc("DELETE /checklists/{checklistID}/items/{id}", deleteChecklistItem)
+	http.HandleFunc("POST /checklists/{checklistID}/items", item.CreateChecklistItem)
+	http.HandleFunc("GET /checklists/{checklistID}/items", item.GetChecklistItems)
+	http.HandleFunc("GET /items/{id}", item.GetChecklistItem)
+	http.HandleFunc("PATCH /items/{id}", item.UpdateChecklistItem)
+	http.HandleFunc("DELETE /items/{id}", item.DeleteChecklistItem)
 
 	return server
 }
